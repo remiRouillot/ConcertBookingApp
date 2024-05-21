@@ -1,0 +1,33 @@
+﻿@using Blazor.QRCode
+
+<MudDialog>
+    <DialogContent>
+        <QrCode ElementId="id"
+                Width="300"
+                height="300"
+                Text="@QRCodeText">
+        </QrCode>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Color="MudBlazor.Color.Dark" Variant="Variant.Filled">Fermer</MudButton>
+    </DialogActions>
+</MudDialog>
+@code {
+
+}
+
+@code {
+    [Parameter] public string QRCodeText { get; set; }
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+
+
+    public string QRByte = "";
+
+    protected override void OnParametersSet()
+    {
+    }
+    void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+}

@@ -1,0 +1,11 @@
+body {
+    background: #ffffffd2;
+    min-height: 100vh;
+}
+html {
+    background: transparent;
+    height: 100vh;
+    background-color: #ffffff;
+    background-image: repeating-radial-gradient( circle at 0 0, transparent 0, #ffffff 40px ), repeating-linear-gradient( #eaebff55, #7179ff );
+}
+

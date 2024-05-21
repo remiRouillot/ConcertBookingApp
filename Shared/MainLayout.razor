@@ -1,0 +1,178 @@
+﻿@inherits LayoutComponentBase
+@inject DataService service
+@inject ISnackbar snack
+
+<MudThemeProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<PageTitle>CONCERT400</PageTitle>
+
+<MudLayout>
+    <CascadingAuthenticationState>
+        <AuthorizeView>
+            <Authorized>
+                <MudAppBar Dense=true Elevation="1" Color="Color.Primary">
+                    <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => DrawerToggle())" />
+                    <MudIcon Icon="@Icons.Material.Filled.MusicNote" />
+                    <MudText>CONCERT400</MudText>
+                    <MudSpacer />
+                    <MudLink Href="/account"><span style="color:white">@_authUser.Identity.Name</span></MudLink>
+                    <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit" Edge="Edge.End" OnClick="Logout" />
+                </MudAppBar>
+                <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2">
+                    <MudNavMenu Class="mud-width-full">
+                        <MudNavLink Match="NavLinkMatch.All" Href="/" Icon="@Icons.Material.Filled.Dashboard">Concerts</MudNavLink>
+                        <MudNavLink Match="NavLinkMatch.All" Href="/tickets" Icon="@Icons.Material.Filled.AirplaneTicket">Mes réservations</MudNavLink>
+                        <MudNavLink Match="NavLinkMatch.All" Href="/account" Icon="@Icons.Material.Filled.Settings">Mon profil</MudNavLink>
+                        <MudNavLink Match="NavLinkMatch.All" Href="/bench" Icon="@Icons.Material.Filled.Power">Benchmark</MudNavLink>
+                    </MudNavMenu>
+                </MudDrawer>
+                <MudMainContent>
+                    <MudContainer MaxWidth="MaxWidth.Large" Class="my-5">
+                        <CascadingValue Value="user" Name="CurrentUser">
+                            @Body
+                        </CascadingValue>
+                    </MudContainer>
+                </MudMainContent>
+            </Authorized>
+            <NotAuthorized>
+                <MudLayout>
+                    <MudMainContent>
+                        <MudContainer MaxWidth="MaxWidth.Small" Class="d-flex flex-column justify-center align-items-center">
+                            <MudPaper Class="pa-8">
+                                @if (state == "login")
+                                {
+                                    <MudText Typo="Typo.h6">Connexion</MudText>
+                                    <MudTextField Class="mb-2" Placeholder="E-Mail" @bind-Value="email" Required="true"></MudTextField>
+                                    <MudTextField Class="mb-2" Placeholder="Password" @bind-Value="password" Required="true" InputType="@InputType.Password"></MudTextField>
+                                    <div class="d-flex w-100 flex-column align-center">
+                                        <MudButton Class="d-block mb-2" Color="@Color.Primary" Variant="@Variant.Filled" OnClick="Login">Se connecter</MudButton>
+                                        <MudLink Class="d-block" Color="@Color.Dark" OnClick="@(() => ChangeState("sign-in"))">Créer un nouveau compte</MudLink>
+                                    </div>
+                                }
+                                else if (state == "sign-in")
+                                {
+                                    <MudText Typo="Typo.h6">Créer un nouveau compte</MudText>
+                                    <MudTextField Class="mb-2" Placeholder="E-Mail" @bind-Value="newUserEmail" Required="true"></MudTextField>
+                                    <MudTextField Class="mb-2" Placeholder="Mot de passe" @bind-Value="newUserPassword1" Required="true" InputType="@InputType.Password"></MudTextField>
+                                    <MudTextField Class="mb-2" Placeholder="Confirmer le mot de passe" @bind-Value="newUserPassword2" Required="true" Error="@(newUserPassword1 != newUserPassword2)" InputType="@InputType.Password"></MudTextField>
+                                    <div class="d-flex w-100 flex-column align-center">
+                                        <MudButton OnClick="SignIn" Color="@Color.Primary" Variant="@Variant.Filled" Class="d-block mb-2">Créer un nouveau compte</MudButton>
+                                        <MudLink Class="d-block" Color="@Color.Dark" OnClick="@(() => ChangeState("login"))">Se connecter à un compte existant</MudLink>
+                                    </div>
+                                }
+                            </MudPaper>
+                            <MudButton OnClick="ResetDb">Réinitialiser la base de données</MudButton>
+                        </MudContainer>
+                    </MudMainContent>
+                </MudLayout>
+            </NotAuthorized>
+        </AuthorizeView>
+    </CascadingAuthenticationState>
+</MudLayout>
+
+
+@code {
+    bool _drawerOpen = true;
+    bool _newAccount = false;
+
+    void DrawerToggle()
+    {
+        _drawerOpen = !_drawerOpen;
+    }
+    Utilisateur? user = null;
+    Utilisateur newUser = new();
+    string email = "";
+    string password = "";
+    string newUserEmail = "";
+    string newUserPassword1 = "";
+    string newUserPassword2 = "";
+
+    string state = "login";
+    bool open = true;
+    bool loading = false;
+    string loginError = string.Empty;
+
+    [CascadingParameter] public Task<AuthenticationState> AuthTask { get; set; }
+    [Inject] private AuthenticationStateProvider AuthState { get; set; }
+
+    private System.Security.Claims.ClaimsPrincipal _authUser;
+
+    protected async override Task OnInitializedAsync()
+    {
+        var authState = await AuthTask;
+        this._authUser = authState.User;
+    }
+
+    void ChangeState(string newState)
+    {
+        email = "";
+        password = "";
+        newUserEmail = "";
+        newUserPassword1 = "";
+        newUserPassword2 = "";
+        state = newState;
+        StateHasChanged();
+    }
+
+    public async Task Login()
+    {
+
+        loginError = string.Empty;
+        loading = true;
+        this.user = service.ValidateUtilisateur(email, password);
+        loading = false;
+        if (this.user == null)
+        {
+            snack.Add("Identifiants incorrects", Severity.Error);
+        }
+        else
+        {
+            var authState = await ((CustomAuthenticationStateProvider)AuthState).ChangeUser(this.user.Email, this.user.UserID.ToString(), "User");
+            this._authUser = authState.User;
+            //await localStorage.SetItemAsync("userId", user.Id.ToString());
+            //await localStorage.SetItemAsync("userName", user.Email);
+            //await localStorage.SetItemAsync("userRole", user.Role);
+            StateHasChanged();
+        }
+    }
+
+    async Task SignIn()
+    {
+        loginError = string.Empty;
+        loading = true;
+        if (newUserEmail.Trim() == "")
+        {
+            snack.Add("Données incorrects", Severity.Error);
+            loading = false;
+        }
+        else
+        {
+            bool success = service.CreateUtilisateur(new Utilisateur() { Email = newUserEmail }, newUserPassword1) != 0;
+            if (success)
+            {
+                string e = newUserEmail;
+                ChangeState("login");
+                email = newUserEmail;
+            }
+            else
+            {
+                snack.Add("Impossible de créer un nouveau compte avec cet identifiant", Severity.Error);
+            }
+            loading = false;
+        }
+        StateHasChanged();
+    }
+
+    private void ResetDb()
+    {
+        service.ResetDb(snack);
+    }
+
+    public async Task Logout()
+    {
+        ChangeState("login");
+        await ((CustomAuthenticationStateProvider)AuthState).Logout();
+    }
+}

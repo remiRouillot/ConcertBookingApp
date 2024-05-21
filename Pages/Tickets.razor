@@ -1,0 +1,102 @@
+﻿@page "/tickets"
+@using System.Text.RegularExpressions
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+@inject DataService service
+
+
+<h1>Mes Réservations</h1>
+@if (bookings == null)
+{
+    <div class="d-flex w-100 flex-column align-center">
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+    </div>
+}
+else if (bookings != null && bookings.Count > 0)
+{
+    @foreach (Concert item in bookings.Select(x => x.Concert).DistinctBy(x => x.ConcertID))
+    {
+        <MudCard Class=" mb-2">
+            <MudCardContent>
+                <div class="d-flex justify-space-between">
+                    <MudText Typo="Typo.caption">@item.DateConcert.ToLongDateString()</MudText>
+                    <MudText Typo="Typo.caption">@item.Lieu.NomLieu</MudText>
+                </div>
+                <MudText Typo="Typo.h6">@item.NomConcert</MudText>
+            </MudCardContent>
+            <MudCardContent Class="grey lighten-3">
+                <MudSimpleTable Style="overflow-x: auto;" Dense="true">
+                    <thead>
+                        <tr>
+                            <th width="100%">Billets réservés:</th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (Billet booking in bookings.Where(x => x.Concert.ConcertID == item.ConcertID))
+                        {
+                            <tr>
+                                <td>@booking.PrenomSurBillet @booking.NomSurBillet</td>
+                                <td>
+                                    @if(booking.Statut == 1)
+                                    {
+                                        <MudChip Disabled="true" Color="Color.Success">Scanné le @booking.DateScan.ToShortDateString()</MudChip>
+                                    }
+                                    else
+                                    {
+                                        <MudChip Disabled="true" Color="Color.Primary">Disponible</MudChip>
+                                    }
+                                </td>
+                                <td><MudIconButton Size="Size.Small" Icon="@Icons.Material.Filled.QrCode" Color="Color.Dark" OnClick="@(async () => await DisplayQrCode(booking))" /></td>
+                                <td><MudIconButton Size="Size.Small" Icon="@Icons.Material.Filled.Cancel" Color="Color.Error" OnClick="@(() => DeleteBillet(booking.BilletID))" /></td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            </MudCardContent>
+        </MudCard>
+    }
+}
+else
+{
+    <div class="d-flex w-100 flex-column align-center">
+        <MudText Typo="Typo.h6" Class="mt-3 mb-2">Aucune réservation</MudText>
+    </div>
+}
+
+
+
+
+
+@code {
+    [CascadingParameter(Name = "CurrentUser")] Utilisateur? User { get; set; }
+    private List<Billet>? bookings = new();
+
+    protected override void OnInitialized()
+    {
+        // Charge la liste des concerts lors de l'initialisation de la page
+        bookings = service.GetUserBillets(User.UserID).ToList();
+    }
+
+    async Task DisplayQrCode(Billet booking)
+    {
+        string bookingText = $"{booking.Concert.NomConcert.PadRight(10, 'X').Substring(0, 10).Replace(' ', '_')}-{(booking.PrenomSurBillet + booking.NomSurBillet).PadRight(10, 'X').Substring(0, 10).Replace(' ', '_')}-{booking.GetHashCode().ToString()}";
+        string bookingId = $"{booking.BilletID}";
+        bookingText = Regex.Replace(bookingText, @"[^0-9a-zA-Z\._]", string.Empty);
+        var parameters = new DialogParameters() {
+            { "QRCodeText", bookingId }
+        };
+        await Dialog.ShowAsync<QrCodeDialog>(bookingText, parameters);
+        bookings = service.GetUserBillets(User.UserID).ToList();
+        StateHasChanged();
+    }
+
+    private void DeleteBillet(int billetID)
+    {
+        service.DeleteBillet(billetID);
+        bookings = service.GetUserBillets(User.UserID).ToList();
+        Snackbar.Add("Billet supprimé !");
+    }
+}

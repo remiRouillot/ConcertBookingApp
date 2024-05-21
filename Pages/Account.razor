@@ -1,0 +1,28 @@
+﻿@page "/account"
+@inject ISnackbar Snackbar
+@inject DataService service
+
+<h1>Paramètres du compte</h1>
+<MudPaper Class="pa-8 ma-2">
+    <MudText Typo="Typo.h6">Informations</MudText>
+    @if (User != null)
+    {
+        <MudTextField Class="mb-2" Variant="Variant.Text" Margin="Margin.Dense" @bind-Value="@User.Nom" Label="Nom"></MudTextField>
+        <MudTextField Class="mb-2" Variant="Variant.Text" Margin="Margin.Dense" @bind-Value="@User.Prenom" Label="Prénom"></MudTextField>
+        <MudTextField Class="mb-2" Variant="Variant.Text" Margin="Margin.Dense" @bind-Value="@User.Adresse" Label="Adresse"></MudTextField>
+        <MudButton OnClick="@UpdateUser">Enregistrer</MudButton>
+    }
+</MudPaper>
+
+
+@code {
+    [CascadingParameter(Name = "CurrentUser")] Utilisateur? User { get; set; }
+
+
+
+    void UpdateUser()
+    {
+        service.UpdateUtilisateur(User!);        
+        Snackbar.Add("Votre profil a été mis à jour", Severity.Success);
+    }
+}

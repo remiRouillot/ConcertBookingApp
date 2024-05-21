@@ -1,0 +1,100 @@
+﻿@page "/"
+@inject DataService service
+@inject IDialogService dialogService
+@inject ISnackbar snack
+@using MudBlazor
+
+<h1>Concerts à venir</h1>
+
+<MudGrid>
+    @foreach (Concert item in ConcertsList)
+    {
+        <MudItem md="4">
+            <MudCard>
+                <MudCardContent>
+                    <div class="d-flex justify-space-between">
+                        <MudText Typo="Typo.caption">@item.DateConcert.ToString("dd/MM/yyyy")</MudText>
+                        <MudText Typo="Typo.caption">@item.Lieu.NomLieu</MudText>
+                    </div>
+                    <MudText Typo="Typo.h6">@item.NomConcert</MudText>
+                </MudCardContent>
+                <MudCardContent>
+                    <div class="d-block">
+                        @foreach (Artiste a in item.Artistes)
+                        {
+                            <MudTooltip Text="@(a.DescriptionArtiste)">
+                                <MudChip Color="Color.Dark" Class="ma-1">@a.NomArtiste</MudChip>
+                            </MudTooltip>
+                        }
+                    </div>
+                </MudCardContent>
+                <MudCardActions>
+                    <MudButton StartIcon="@Icons.Material.Filled.Add" Color="Color.Primary" Variant="Variant.Filled" Size="Size.Small" OnClick="@(() => ReserveBillets(item.ConcertID))">Réserver</MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+    }
+</MudGrid>
+
+<MudDialog @bind-IsVisible="@showDialog">
+    <DialogContent>
+        <MudText Typo="Typo.h6">@SelectedConcert.NomConcert</MudText>
+        <MudText Typo="Typo.overline" Class="mt-2">Adresse:</MudText>
+        <MudText Typo="Typo.body1">@SelectedConcert.Lieu.NomLieu</MudText>
+        <MudText Typo="Typo.body1">@SelectedConcert.Lieu.Adresse</MudText>
+        <MudTable Items="@booking" Dense="true">
+            <ToolBarContent>
+                <MudText>Tickets</MudText>
+                <MudSpacer />
+                <MudButton StartIcon="@Icons.Material.Filled.AddCircle" Color="Color.Primary" OnClick="@(() => booking.Add(new Billet(){Concert = SelectedConcert, ConcertID=SelectedConcert.ConcertID}))">Ajouter</MudButton>
+            </ToolBarContent>
+            <RowTemplate>
+                <MudTd><MudTextField @bind-Value="@context.PrenomSurBillet" Label="Prénom"></MudTextField></MudTd>
+                <MudTd><MudTextField @bind-Value="@context.NomSurBillet" Label="Nom"></MudTextField></MudTd>
+                <MudTd><MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => booking.Remove(context))" /></MudTd>
+            </RowTemplate>
+        </MudTable>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CloseReservationModal" Color="Color.Dark" Variant="Variant.Filled">Annuler</MudButton>
+        <MudButton OnClick="Book" Color="Color.Primary" StartIcon="@Icons.Material.Filled.EventAvailable" Variant="Variant.Filled">Réserver</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter(Name = "CurrentUser")] Utilisateur? User { get; set; }
+    private List<Billet>? booking = new();
+    private List<Concert> ConcertsList;
+    private Concert SelectedConcert;
+    private bool showDialog = false;
+
+    protected override void OnInitialized()
+    {
+        // Charge la liste des concerts lors de l'initialisation de la page
+        ConcertsList = service.GetAllConcerts().ToList();
+    }
+
+
+
+    private void ReserveBillets(int concertId)
+    {
+        // Récupère le concert sélectionné
+        SelectedConcert = ConcertsList.FirstOrDefault(c => c.ConcertID == concertId);
+        booking = new() { new Billet() { Concert = SelectedConcert, ConcertID = SelectedConcert.ConcertID, NomSurBillet = User.Nom, PrenomSurBillet = User.Prenom } };
+        // Affiche le dialog de réservation
+        showDialog = true;
+    }
+
+    private void CloseReservationModal()
+    {
+        // Ferme le dialog de réservation
+        showDialog = false;
+    }
+
+    private void Book()
+    {
+        foreach (Billet b in booking) service.CreateBillet(b, User, b.Concert);
+        showDialog = false;
+        snack.Add("Billets réservés !");
+    }
+}

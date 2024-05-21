@@ -1,0 +1,28 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>a7504529-b963-41c3-a118-8c3ba6b28b76</UserSecretsId>
+    <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    <DockerfileContext>.</DockerfileContext>
+
+    <ContainerBaseImage>registry.access.redhat.com/ubi8/dotnet-80-runtime:8.0-5</ContainerBaseImage>
+    <ContainerRuntimeIdentifier>linux-ppc64le</ContainerRuntimeIdentifier>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Remove="C:\Users\remir\.nuget\packages\blazor.qrcode\0.2.1\contentFiles\any\net6.0\LICENSE.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aumerial.Data.Nti" Version="3.0.2" />
+    <PackageReference Include="Blazor.QRCode" Version="0.2.1" />
+    <PackageReference Include="Dapper" Version="2.1.21" />
+    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.19.4" />
+    <PackageReference Include="MudBlazor" Version="6.11.0" />
+    <PackageReference Include="System.Text.Encoding.CodePages" Version="8.0.0" />
+  </ItemGroup>
+
+</Project>

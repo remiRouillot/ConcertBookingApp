@@ -1,0 +1,106 @@
+﻿@page "/bench"
+@using Aumerial.Data.Nti
+@using Dapper
+
+<MudPaper Class="mb-3 pa-4">
+    <h3>Benchmark</h3>
+    <MudToolBar>
+        <MudTextField InputMode="InputMode.numeric" @bind-Value="@n" Label="Nombre de lignes à insérer"/>
+        <MudTextField InputMode="InputMode.numeric" @bind-Value="@chunkSize" Label="Afficher par tranches de"/>
+    </MudToolBar>
+    <MudToolBar>
+        <MudButton Variant="@Variant.Filled" Color="@Color.Primary" OnClick="@Start">Démarrer</MudButton>
+    </MudToolBar>
+    <MudText>@info</MudText>
+    <MudTable Items="@chunks" Dense="true">
+        <HeaderContent>
+            <MudTh>De...</MudTh>
+            <MudTh>...à</MudTh>
+            <MudTh>Min (ms)</MudTh>
+            <MudTh>Moy (ms)</MudTh>
+            <MudTh>Max (ms)</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>@context.From</MudTd>
+            <MudTd>@context.To</MudTd>
+            <MudTd Style="font-family:monospace;font-weight:bold;color:green">@context.Min</MudTd>
+            <MudTd Style="font-family:monospace;font-weight:bold;color:blue">@context.Avg</MudTd>
+            <MudTd Style="font-family:monospace;font-weight:bold;color:red">@context.Max</MudTd>
+        </RowTemplate>
+    </MudTable>
+</MudPaper>
+
+
+@code {
+
+    public class Result
+    {
+        public int From { get; set; }
+        public int To { get; set; }
+        public double Min { get; set; }
+        public double Max { get; set; }
+        public double Avg { get; set; }
+    }
+
+    List<Result> chunks = new();
+    List<double> chunk = new();
+    string info = string.Empty;
+    int n = 10000;
+    int chunkSize = 1000;
+
+
+
+    async Task Start()
+    {
+        info = $"Création d'une table BENCH et insertion de {n} lignes (Requêtes INSERT INTO individuelles). Les résultats donnent les temps de réponse minimums, maximums et moyens par tranche de {chunkSize} requêtes.";
+        StateHasChanged();
+        DateTime t1, t2, ti, tf;
+        chunks = new();
+        chunk = new();
+        NTiConnection conn = new NTiConnection();
+        conn.DefaultDatabase = "CONCERT";
+        conn.Username = Environment.GetEnvironmentVariable("user");
+        conn.Password = Environment.GetEnvironmentVariable("password");
+        conn.Server = Environment.GetEnvironmentVariable("server");
+        conn.Open();
+        try
+        {
+            conn.Execute("DROP TABLE CONCERT.BENCH");
+        }
+        catch
+        {
+            
+        }
+        await conn.ExecuteAsync("CREATE TABLE CONCERT.BENCH (ID BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY, FIRSTNAME VARCHAR(512), LASTNAME VARCHAR(512))");
+        ti = DateTime.Now;
+        foreach (int i in Enumerable.Range(1, n))
+        {
+            t1 = DateTime.Now;
+            conn.Execute("INSERT INTO CONCERT.BENCH (FIRSTNAME, LASTNAME) VALUES (?, ?)", new { n1 = $"CUSTOMER FIRST NAME NUMBER {i}", n2 = $"CUSTOMER LAST NAME  NUMBER {i}" });
+            t2 = DateTime.Now;
+            chunk.Add((t2 - t1).TotalMilliseconds);
+            if (i % chunkSize == 0)
+            {
+                await Task.Run(() =>
+                {
+                    chunks.Add(new()
+                        {
+                            From = i - chunkSize + 1,
+                            To = i,
+                            Min = Math.Round(chunk.Min(), 3),
+                            Max = Math.Round(chunk.Max(), 3),
+                            Avg = Math.Round(chunk.Average(), 3)
+                        });
+                    chunk = new();
+                });
+                StateHasChanged();
+            }
+        }
+        tf = DateTime.Now;
+        info += "\n \n";
+        info += $"Traitement terminé, {n} lignes ont été insérées en {Math.Round((tf - ti).TotalSeconds, 3)} secondes.";
+        StateHasChanged();
+        conn.Execute("DROP TABLE CONCERT.BENCH");
+        conn.Close();
+    }
+}
